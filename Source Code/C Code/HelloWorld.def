@@ -1,0 +1,4 @@
+LIBRARY HelloWorld.dll
+
+EXPORTS
+Java_com_JNICall_helloC

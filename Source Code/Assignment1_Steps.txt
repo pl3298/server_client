@@ -1,0 +1,204 @@
+Part A - Create dll file (C++ library)
+Part B - Create RMI Server (JNI Communication here)
+Part C - Create RMI Client
+Part D - Deploy RMI Client on Tomcat
+
+====================================================================================================================================================
+Part A
+
+Step 1 - Create a JAVA Class
+
+package com;
+
+public class JNICall {
+	
+	public native void helloC();
+
+    static {
+        System.loadLibrary("HelloWorld");
+    }
+
+    public static void main(String[] args) {
+        new JNICall().helloC();
+    }
+	
+}
+
+Step - 2 Create a header file using following command
+
+javac -h . JNICall.java
+
+Step - 3 Write your C code to implement your native method (HelloWorld.c)
+
+#include "stdio.h"
+#include "jni.h"
+#include "com_JNICall.h"
+#include "stdlib.h"
+
+JNIEXPORT void JNICALL Java_com_JNICall_helloC(JNIEnv *env, jobject javaobj) 
+{
+	printf("Hello World: From C");
+	
+   FILE *fptr;
+   fptr = fopen("output.txt", "w");
+   if(fptr == NULL)
+   {
+      printf("Error!");
+      exit(1);
+   }
+   
+   fprintf(fptr,"%s", "Hello World, Written by c program");
+   fclose(fptr);
+
+	
+	return;
+}
+
+Step - 4 Generate DLL File using 64 bit compiler
+
+tcc "F:\Softwares\C Code\New folder\HelloWorld.c" -I "C:\Program Files\Java\jdk1.8.0_112\include" -I "C:\Program Files\Java\jdk1.8.0_112\include\win32" -shared -o HelloWorld.dll
+
+tcc <Filename> -I <jni.h path> -I <jni_md.h path> -shared -o HelloWorld.dll
+
+====================================================================================================================================================
+
+Part B 
+
+Step - 1 Add native library path in java library path
+Step - 2 Create Your Interface for RMI <RMIInterface.java>
+
+package com;
+
+import java.rmi.Remote;
+import java.rmi.RemoteException;
+
+public interface RMIInterface extends Remote{
+	
+
+	
+	
+	public void doJNICall() throws RemoteException;
+	
+}
+
+
+Step - 3 Interface implementation
+
+package com;
+
+import java.rmi.RemoteException;
+import java.rmi.server.UnicastRemoteObject;
+
+public class RMIInterfaceImpl extends UnicastRemoteObject implements RMIInterface{
+
+	public RMIInterfaceImpl() throws RemoteException {}
+
+	@Override
+	public void doJNICall() throws RemoteException {
+		new JNICall().helloC();
+	}	
+}
+
+Step - 4 Code to create RMI Server
+
+package com;
+
+import java.net.MalformedURLException;
+import java.rmi.Naming;
+import java.rmi.RemoteException;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
+
+public class RMIServer {
+	
+	public static void main(String[] args) throws RemoteException, MalformedURLException {
+		
+		RMIInterface obj = new RMIInterfaceImpl();
+		
+		final String ip = "localhost";
+		final int port = 1091;
+		final String bindLocationBasePath = "rmi://"+ip+":"+port+"/test";
+		
+		 try { // special exception handler for registry creation
+	           	LocateRegistry.createRegistry(port); 
+	            Naming.rebind(bindLocationBasePath, obj);
+	            System.out.println("RMI Server Ready. Service at "+bindLocationBasePath);
+		           
+	            
+	        } catch (RemoteException e) {
+	            // do nothing, error means registry already exists
+	            System.out.println("java RMI registry already exists.");
+	        } 
+		
+		
+	}
+	
+}
+
+====================================================================================================================================================
+
+Part C (Web App)
+
+Step - 1 Create Your Interface for RMI <RMIInterface.java>
+
+package com;
+
+import java.rmi.Remote;
+import java.rmi.RemoteException;
+
+public interface RMIInterface extends Remote{
+	
+
+	
+	
+	public void doJNICall() throws RemoteException;
+	
+}
+
+Step - 2 Write code to access RMI
+
+package com;
+
+import java.net.MalformedURLException;
+import java.rmi.Naming;
+import java.rmi.NotBoundException;
+import java.rmi.RemoteException;
+import java.rmi.server.UnicastRemoteObject;
+
+public class RMIClient {
+	
+	public void doRMICall() {
+		
+		RMIInterface obj;
+		
+		final String ip = "localhost";
+		final int port = 1091;
+		final String bindLocationBasePath = "rmi://"+ip+":"+port+"/test";
+		
+		try {
+			obj = (RMIInterface) Naming.lookup(bindLocationBasePath);
+			obj.doJNICall();
+		} catch (MalformedURLException | RemoteException | NotBoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+	}
+	
+}
+
+Step - 3 Create a servlet to access this code
+
+Step - 4 Create index.jsp file to call your rmi code 
+
+====================================================================================================================================================
+
+Part D
+
+Deploy to Tomcat app
+
+
+
+
+
+
